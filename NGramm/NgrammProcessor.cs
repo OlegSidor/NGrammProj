@@ -428,6 +428,11 @@ namespace NGramm
                 }
             }
 
+            if (!show_NBS)
+            {
+                text = new string(text.Where(x => !NonRenderingCategories(x)).ToArray());
+            }
+
             return countSpaces ? text.Length : text.Count(c => !spaces_list.Contains(c));
         }
 

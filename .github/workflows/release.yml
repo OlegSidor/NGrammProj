@@ -1,0 +1,41 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*' 
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup Python 3.6.8
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.6.8'
+
+    - name: Install PyInstaller
+      run: pip install pyinstaller
+
+    - name: Build Python project
+      run: pyinstaller your_script.spec 
+
+    - name: Build C# .NET Framework project
+      run: |
+        & "C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe" `
+            .\NGramm\NGramm.csproj `
+            /p:Configuration=Release `
+            /p:Platform=x64
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          NGramm\bin\Release\YourApp.exe
+          dist\tokenizer.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
