@@ -22,20 +22,26 @@ jobs:
       run: pip install pyinstaller
 
     - name: Build Python project
-      run: pyinstaller your_script.spec 
+      run: pyinstaller --onefile --console --distpath .\NGramm\CodeTokenizatorTool .\Tokenizer\tokenizer.py
+
+    - name: Find MSBuild path
+      id: msbuild
+      run: |
+        $path = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe
+        echo "MSBUILD_PATH=$path" >> $env:GITHUB_ENV
+
+    - name: Restore NuGet packages
+      run: nuget restore .\NGramm\NGramm.csproj
 
     - name: Build C# .NET Framework project
       run: |
-        & "C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe" `
-            .\NGramm\NGramm.csproj `
-            /p:Configuration=Release `
-            /p:Platform=x64
+        & "$env:MSBUILD_PATH" .\NGramm\NGramm.csproj /p:Configuration=Release /p:Platform=win-x64
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          NGramm\bin\Release\YourApp.exe
-          dist\tokenizer.exe
+          NGramm/bin/win-x64/Release/net48/NGramm.exe
+          NGramm/CodeTokenizatorTool/tokenizer.exe
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
