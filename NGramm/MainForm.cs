@@ -1067,6 +1067,20 @@ namespace NGramm
                 groupBox1.Enabled = false;
                 порахуватиToolStripMenuItem.Enabled = false;
             }
+
+
+        }
+
+        private void CollocationsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (processor == null)
+            {
+                MessageBox.Show("Please open a file first.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var collocationsForm = new CollocationsForm(processor, IndexPorah, NgrammProcessor.process_spaces);
+            collocationsForm.ShowDialog();
         }
     }
 }

@@ -211,7 +211,7 @@ namespace NGramm
                 var text = RemoveConsequtiveSpaces(unsignedTextorg);
                 CountDesiredVariables = text.Length;
                 var progressMult = text.Length * n / 95;
-                ClearAllNGrammContainers();
+                literal_ngrams = new ConcurrentBag<NGrammContainer>();
 
                 Parallel.For(1, n + 1, PerformanceSettings.ParallelOpt, nn =>
                 {
@@ -341,7 +341,7 @@ namespace NGramm
 
 
                 CountDesiredVariables = text.Length;
-                ClearAllNGrammContainers();
+                symbol_ngrams = new ConcurrentBag<NGrammContainer>();
                 int progressMul = text.Length / 95;
                 Parallel.For(1, n + 1, PerformanceSettings.ParallelOpt, nn =>
                 {
@@ -459,7 +459,7 @@ namespace NGramm
 
                 var words = Words(ignore_punctuation ? unsignedTextorg : endsignedTextorg);
                 CountDesiredVariables = words.Count;
-                ClearAllNGrammContainers();
+                words_ngrams = new ConcurrentBag<NGrammContainer>();
                 int progressMult = words.Count / 95;
 
                 Parallel.For(1, n + 1, PerformanceSettings.ParallelOpt, nn =>
@@ -706,12 +706,7 @@ namespace NGramm
         }
 
 
-        private void ClearAllNGrammContainers()
-        {
-            symbol_ngrams = new ConcurrentBag<NGrammContainer>();
-            literal_ngrams = new ConcurrentBag<NGrammContainer>();
-            words_ngrams = new ConcurrentBag<NGrammContainer>();
-        }
+        
 
         private string RemoveConsequtiveSpaces(string input)
         {
