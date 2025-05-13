@@ -635,6 +635,11 @@ namespace NGramm
                 return ProgramWords(rawTextorg);
             }
 
+            
+            inputText = Regex.Replace(inputText, @"^\s+$[\r\n]*", "", RegexOptions.Multiline);
+            inputText = Regex.Replace(inputText, @"^\s+", "", RegexOptions.Multiline);
+
+
             var text = startSpaces.Replace(inputText, "");
             text = endSpaces.Replace(text, "");
             var textContainSpaces = text.Any(x => spaces_list.Except(skip_spaces).Contains(x));
