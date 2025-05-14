@@ -1079,9 +1079,7 @@ namespace NGramm
                 return;
             }
 
-            
-
-            int nValue = int.Parse(N.Text);   
+            int nValue = int.Parse(N.Text);
             var collocationsForm = new CollocationsForm(processor, IndexPorah, NgrammProcessor.process_spaces, nValue);
             collocationsForm.ShowDialog();
         }

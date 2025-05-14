@@ -24,7 +24,7 @@ namespace NGramm
         private Button saveButton;
         private ListView resultsListView;
         private readonly NgrammProcessor processor;
-        private readonly int fMin;
+        private int fMin;
         private readonly bool useSpaces;
         private Label nPrimeLabel;
         private Label inputLabel;
@@ -37,6 +37,9 @@ namespace NGramm
             this.useSpaces = useSpaces;
             this.maxNValue = maxNValue;
             InitializeComponents();
+
+
+
         }
 
         private void ModeSelector_SelectedIndexChanged(object sender, EventArgs e)
@@ -76,8 +79,8 @@ namespace NGramm
                 "Символьна n-грама в n'-грамах",
                 "Символьна n-грама в словах",
                 "Символьна n-грама в реченнях",
-                "Словесна н-грама в словесних n'-грамах",
-                "Словесна п-грама в реченнях"
+                "Словесна n-грама в словесних n'-грамах",
+                "Словесна n-грама в реченнях"
             });
             modeSelector.SelectedIndex = 0;
             modeSelector.SelectedIndexChanged += ModeSelector_SelectedIndexChanged;
@@ -120,104 +123,339 @@ namespace NGramm
 
         private void SearchButton_Click(object sender, EventArgs e)
         {
+
             string ngram = inputNgramTextBox.Text.Trim().Replace('_', ' ');
             int nPrime = (int)nPrimeSelector.Value;
             int mode = modeSelector.SelectedIndex;
             NgrammProcessor.process_spaces = useSpaces;
 
-            if (!CheckNgramsExist(mode)) return;
-            if (!CheckCharacterNgramLength(ngram, nPrime, maxNValue, mode)) return;
-            if ((mode == 6 || mode == 7) && !CheckWordNgram(ngram, nPrime, maxNValue, mode)) return;
-            if ((mode == 6 || mode == 7) && !ValidateWordNgramInput(inputNgramTextBox.Text.Replace('_', ' '))) return;
+            int textLength = processor.endsignedTextorg.Length;
+            if (fMin > 1)
+            {
+                if (textLength < 1000) // дуже малий текст
+                    fMin = 1;
+                else if (textLength < 5000) // середній текст
+                    fMin = Math.Min(fMin, 2);
+                else if (textLength < 20000) // більший текст
+                    fMin = Math.Min(fMin, 3);
+                else if (textLength < 50000)
+                    fMin = Math.Min(fMin, 5);
+                // інакше залишаємо fMin як є
+            }
+
+            switch (mode)
+            {
+                case 0:
+                case 1:
+                case 2:
+                    if (processor.GetLiteralNgrams().Count == 0)
+                    {
+                        MessageBox.Show("Буквені n-грами ще не пораховані.");
+                        return;
+                    }
+                    break;
+
+                case 3:
+                case 4:
+                case 5:
+                    if (processor.GetSymbolNgrams().Count == 0)
+                    {
+                        MessageBox.Show("Символьні n-грами ще не пораховані.");
+                        return;
+                    }
+                    break;
+
+                case 6:
+                case 7:
+                    if (processor.GetWordsNgrams().Count == 0)
+                    {
+                        MessageBox.Show("Словесні n-грами ще не пораховані.");
+                        return;
+                    }
+                    break;
+            }
+
+            if (mode == 1 || mode == 2 || mode == 4 || mode == 5)
+            {
+                // буквена + символьна → рахувати довжину символів
+                if (ngram.Length > maxNValue)
+                {
+                    MessageBox.Show($"Довжина n-грами ({ngram.Length}) перевищує n ({maxNValue}), яке було встановлено при обчисленні.",
+                        "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+            }
+            if (mode == 0 || mode == 3) // буквені, символьні
+            {
+                if (ngram.Length > nPrime)
+                {
+                    MessageBox.Show($"Довжина n-грами ({ngram.Length}) перевищує n' ({nPrime}).", "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                if (nPrime > maxNValue)
+                {
+                    MessageBox.Show($"n' ({nPrime}) не може бути більше, ніж n ({maxNValue}), яке було встановлено при обчисленні в MainForm.",
+                        "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+            }
+            else if (mode == 7 || mode == 6)
+            {
+                // словесна → рахувати кількість слів
+                int wordCount = ngram.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
+                if (mode == 6 && nPrime > maxNValue)
+                {
+                    MessageBox.Show($"Кількість n'-грами ({nPrime}) перевищує n ({maxNValue}), яке було встановлено при обчисленні.",
+                        "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                if(mode == 6 && wordCount > nPrime)
+                {
+                    MessageBox.Show($"Кількість слів ({wordCount}) перевищує n` ({nPrime}), яке було встановлено при обчисленні.",
+                        "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                if(mode==7 && wordCount > maxNValue)
+                {
+                    MessageBox.Show($"Кількість слів ({wordCount}) перевищує n ({maxNValue}), яке було встановлено при обчисленні.",
+                        "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+
+            if (modeSelector.SelectedIndex == 6 || modeSelector.SelectedIndex == 7)
+            {
+                string rawInput = inputNgramTextBox.Text.Replace('_', ' ');
+
+                // 1. Пустий або лише пробіли
+                if (string.IsNullOrWhiteSpace(rawInput))
+                {
+                    MessageBox.Show("Поле n-грами не може бути порожнім або містити лише пробіли.",
+                        "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // 2. Пробіли на початку або в кінці
+                if (rawInput.StartsWith(" ") || rawInput.EndsWith(" "))
+                {
+                    MessageBox.Show("Введена n-грама має пробіли на початку або в кінці.",
+                        "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // 3. Подвійні пробіли всередині
+                if (rawInput.Contains("  "))
+                {
+                    MessageBox.Show("Введена n-грама містить подвійні пробіли всередині.",
+                        "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                string[] words = rawInput.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                Regex validWord = new Regex(@"^[a-zA-Zа-яА-Я0-9]+$");
+
+                foreach (string word in words)
+                {
+                    if (!validWord.IsMatch(word))
+                    {
+                        MessageBox.Show($"Некоректна n-грама: слово \"{word}\" містить недопустимі символи.\n" +
+                            "Слова можуть містити лише літери.",
+                            "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                }
+            }
+
 
             resultsListView.Items.Clear();
             Dictionary<string, int> result = new Dictionary<string, int>();
 
             switch (mode)
             {
-                case 0:
+                case 0: // Буквена n-грама в n'-грамах
                     foreach (var cont in processor.GetLiteralNgrams().Where(c => c.n == nPrime))
-                        foreach (var kv in cont.GetNgrams(fMin))
-                            if ((NgrammProcessor.ignore_case ? kv.Key.ToLower() : kv.Key)
-                                .Contains(NgrammProcessor.ignore_case ? ngram.ToLower() : ngram))
-                                result[kv.Key] = kv.Value;
-                    break;
-                case 1:
-                    foreach (var word in processor.Words(processor.unsignedTextorg))
-                        if ((NgrammProcessor.ignore_case ? word.Value.ToLower() : word.Value)
-                            .Contains(NgrammProcessor.ignore_case ? ngram.ToLower() : ngram))
-                            result[word.Value] = result.ContainsKey(word.Value) ? result[word.Value] + 1 : 1;
-                    break;
-                case 2:
-                    var text2 = NgrammProcessor.ignore_punctuation ? processor.unsignedTextorg : processor.endsignedTextorg;
-                    foreach (var sentence in Regex.Split(text2, @"(\r?\n){2,}")
-                             .Where(s => !string.IsNullOrWhiteSpace(s)))
-                        if ((NgrammProcessor.ignore_case ? sentence.ToLower() : sentence)
-                            .Contains(NgrammProcessor.ignore_case ? ngram.ToLower() : ngram))
-                            result[sentence] = result.ContainsKey(sentence) ? result[sentence] + 1 : 1;
-                    break;
-                case 3:
-                    foreach (var cont in processor.GetSymbolNgrams().Where(c => c.n == nPrime))
-                        foreach (var kv in cont.GetNgrams(fMin))
-                            if ((NgrammProcessor.ignore_case ? kv.Key.ToLower() : kv.Key)
-                                .Contains(NgrammProcessor.ignore_case ? ngram.ToLower() : ngram))
-                                result[kv.Key] = kv.Value;
-                    break;
-                case 4:
-                    foreach (var word in processor.Words(processor.rawTextorg))
-                        if ((NgrammProcessor.ignore_case ? word.Value.ToLower() : word.Value)
-                            .Contains(NgrammProcessor.ignore_case ? ngram.ToLower() : ngram))
-                            result[word.Value] = result.ContainsKey(word.Value) ? result[word.Value] + 1 : 1;
-                    break;
-                case 5:
-                    foreach (var sentence in Regex.Split(processor.rawTextorg, @"(\r?\n){2,}")
-                             .Where(s => !string.IsNullOrWhiteSpace(s)))
-
-                        if ((NgrammProcessor.ignore_case ? sentence.ToLower() : sentence)
-                            .Contains(NgrammProcessor.ignore_case ? ngram.ToLower() : ngram))
-                            result[sentence] = result.ContainsKey(sentence) ? result[sentence] + 1 : 1;
-                    break;
-                case 6:
-                    string normalizedInput = NormalizeSpaces(NgrammProcessor.ignore_case ? ngram.ToLower() : ngram);
-                    string[] targetWords = normalizedInput.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                    foreach (var cont in processor.GetWordsNgrams().Where(c => c.n == nPrime))
+                    {
                         foreach (var kv in cont.GetNgrams(fMin))
                         {
-                            string candidateNormalized = NormalizeSpaces(NgrammProcessor.ignore_case ? kv.Key.ToLower() : kv.Key);
-                            string[] candidateWords = candidateNormalized.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                            if (ContainsSubsequence(candidateWords, targetWords))
+                            string key = NgrammProcessor.ignore_case ? kv.Key.ToLower() : kv.Key;
+                            string cmp = NgrammProcessor.ignore_case ? ngram.ToLower() : ngram;
+                            if (key.Contains(cmp))
                                 result[kv.Key] = kv.Value;
                         }
+                    }
                     break;
-                case 7: // Лексична n-грама в реченнях
-                    {
-                        normalizedInput = NormalizeSpaces(NgrammProcessor.ignore_case ? ngram.ToLower() : ngram);
-                        int wordCount = normalizedInput.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
 
-                        if (wordCount > maxNValue)
+                case 1: // Буквена n-грама в словах
+                    foreach (var word in processor.Words(processor.unsignedTextorg))
+                    {
+                        string key = NgrammProcessor.ignore_case ? word.Value.ToLower() : word.Value;
+                        string cmp = NgrammProcessor.ignore_case ? ngram.ToLower() : ngram;
+                        if (key.Contains(cmp))
                         {
-                            MessageBox.Show($"Кількість слів у n-грамі ({wordCount}) перевищує n ({maxNValue}), яке було встановлено при обчисленні.",
-                                "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            if (!result.ContainsKey(word.Value))
+                                result[word.Value] = 0;
+                            result[word.Value]++;
+                        }
+                    }
+                    break;
+
+                case 2: // Буквена n-грама в реченнях
+                    foreach (var sentence in processor.endsignedTextorg.Split(new[] { '.', '?', '!', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        string key = NgrammProcessor.ignore_case ? sentence.ToLower() : sentence;
+                        string cmp = NgrammProcessor.ignore_case ? ngram.ToLower() : ngram;
+                        if (key.Contains(cmp))
+                        {
+                            if (!result.ContainsKey(sentence))
+                                result[sentence] = 0;
+                            result[sentence]++;
+                        }
+                    }
+                    break;
+
+                case 3: // Символьна n-грама в n'-грамах
+                    foreach (var cont in processor.GetSymbolNgrams().Where(c => c.n == nPrime))
+                    {
+                        foreach (var kv in cont.GetNgrams(fMin))
+                        {
+                            string key = NgrammProcessor.ignore_case ? kv.Key.ToLower() : kv.Key;
+                            string cmp = NgrammProcessor.ignore_case ? ngram.ToLower() : ngram;
+                            if (key.Contains(cmp))
+                                result[kv.Key] = kv.Value;
+                        }
+                    }
+                    break;
+
+                case 4: // Символьна n-грама в словах
+                    foreach (var word in processor.Words(processor.rawTextorg))
+                    {
+                        string key = NgrammProcessor.ignore_case ? word.Value.ToLower() : word.Value;
+                        string cmp = NgrammProcessor.ignore_case ? ngram.ToLower() : ngram;
+                        if (key.Contains(cmp))
+                        {
+                            if (!result.ContainsKey(word.Value))
+                                result[word.Value] = 0;
+                            result[word.Value]++;
+                        }
+                    }
+                    break;
+
+                case 5: // Символьна n-грама в реченнях
+                    foreach (var sentence in processor.rawTextorg.Split(new[] { '.', '?', '!', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        string key = NgrammProcessor.ignore_case ? sentence.ToLower() : sentence;
+                        string cmp = NgrammProcessor.ignore_case ? ngram.ToLower() : ngram;
+                        if (key.Contains(cmp))
+                        {
+                            if (!result.ContainsKey(sentence))
+                                result[sentence] = 0;
+                            result[sentence]++;
+                        }
+                    }
+                    break;
+
+
+                case 6:
+                    {
+                        bool ignorePunctuation = NgrammProcessor.ignore_punctuation;
+                        var targetWords = processor.Words(ngram, true)
+                           .Select(x => NgrammProcessor.ignore_case ? x.Value.ToLower() : x.Value)
+                           .ToArray();
+
+
+                        if (targetWords.Length > nPrime)
+                        {
+                            MessageBox.Show($"[ПОМИЛКА] n′ ({nPrime}) не може бути менше кількості слів у введеній n-грами ({targetWords.Length}).");
                             return;
                         }
 
-                        foreach (var sentence in processor.endsignedTextorg
-                                 .Split(new[] { '.', '?', '!', '\n' }, StringSplitOptions.RemoveEmptyEntries))
-                        {
-                            string keySentence = NormalizeSpaces(NgrammProcessor.ignore_case ? sentence.ToLower() : sentence);
-                            string[] sentenceWords = keySentence.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                            string[] inputWords = normalizedInput.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
-                            // ✅ Ось основна перевірка як в case 6
-                            if (ContainsSubsequence(sentenceWords, inputWords))
+                        var containers = processor.GetWordsNgrams();
+
+                        int candidates = 0;
+                        int checkedCandidates = 0;
+
+                        foreach (var cont in containers)
+                        {
+                            if (cont.n != nPrime)
+                                continue;
+
+                            var ngrams = cont.GetNgrams(fMin).ToList();
+
+                            if (!ngrams.Any())
+                                MessageBox.Show($"[ПОПЕРЕДЖЕННЯ] У контейнері n={nPrime} GetNgrams(fMin={fMin}) повернув 0 n-грам. Можливо, всі частоти = 1?");
+
+                            foreach (var kv in ngrams)
                             {
-                                if (!result.ContainsKey(sentence))
-                                    result[sentence] = 0;
-                                result[sentence]++;
+                                string candidateNormalized = NormalizeSpaces(NgrammProcessor.ignore_case ? kv.Key.ToLower() : kv.Key);
+                                string[] candidateWords = candidateNormalized.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+                                checkedCandidates++;
+
+                                bool allWordsFound = true;
+                                foreach (string targetWord in targetWords)
+                                {
+                                    if (!candidateWords.Contains(targetWord))
+                                    {
+                                        allWordsFound = false;
+                                        break;
+                                    }
+                                }
+
+                                if (allWordsFound)
+                                {
+                                    result[kv.Key] = kv.Value;
+                                    candidates++;
+                                }
                             }
                         }
                         break;
                     }
+                case 7:
+                    {
+                        fMin = 1;
+                        if (string.IsNullOrWhiteSpace(processor.rawTextorg))
+                        {
+                            MessageBox.Show("Текст не завантажений або пустий.");
+                            return;
+                        }
+
+                        var inputWords = processor.Words(ngram, ignoreCode: true)
+                                                  .Select(x => NgrammProcessor.ignore_case ? x.Value.ToLower() : x.Value)
+                                                  .ToArray();
+
+                        if (inputWords.Length > maxNValue)
+                        {
+                            MessageBox.Show($"Кількість слів у n-грамі ({inputWords.Length}) перевищує n ({maxNValue}).");
+                            return;
+                        }
+
+                        // !!! найшвидший і стабільний варіант
+                        char[] delimiters = { '.', '?', '!', '\n' };
+                        string[] sentences = processor.rawTextorg.Split(delimiters, StringSplitOptions.RemoveEmptyEntries);
+
+                        foreach (var sentence in sentences)
+                        {
+                            string cleanedSentence = sentence.Trim();
+                            if (string.IsNullOrWhiteSpace(cleanedSentence))
+                                continue;
+
+                            var sentenceWords = processor.Words(cleanedSentence, ignoreCode: true)
+                                                         .Select(x => NgrammProcessor.ignore_case ? x.Value.ToLower() : x.Value)
+                                                         .ToHashSet();
+
+                            if (inputWords.All(w => sentenceWords.Contains(w)))
+                            {
+                                if (!result.ContainsKey(cleanedSentence))
+                                    result[cleanedSentence] = 0;
+                                result[cleanedSentence]++;
+                            }
+                        }
+
+                        break;
+                    }
+
+
+
+
             }
 
             var sorted = result.Where(r => r.Value >= fMin).OrderByDescending(r => r.Value).ToList();
@@ -231,7 +469,6 @@ namespace NGramm
                 rank++;
             }
         }
-
 
         private void SaveButton_Click(object sender, EventArgs e)
         {
@@ -252,150 +489,7 @@ namespace NGramm
             }
         }
 
-        //fdgfdgdfg
-        private bool ContainsSubsequence(string[] source, string[] pattern)
-        {
-            for (int i = 0; i <= source.Length - pattern.Length; i++)
-            {
-                bool match = true;
-                for (int j = 0; j < pattern.Length; j++)
-                {
-                    string a = NgrammProcessor.ignore_case ? source[i + j].ToLower() : source[i + j];
-                    string b = NgrammProcessor.ignore_case ? pattern[j].ToLower() : pattern[j];
-                    if (a != b)
-                    {
-                        match = false;
-                        break;
-                    }
-                }
-                if (match) return true;
-            }
-            return false;
-        }
-        private bool CheckNgramsExist(int mode)
-        {
-            switch (mode)
-            {
-                case 0:
-                case 1:
-                case 2:
-                    if (processor.GetLiteralNgrams().Count == 0)
-                    {
-                        MessageBox.Show("Буквені n-грами ще не пораховані.", "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return false;
-                    }
-                    break;
-                case 3:
-                case 4:
-                case 5:
-                    if (processor.GetSymbolNgrams().Count == 0)
-                    {
-                        MessageBox.Show("Символьні n-грами ще не пораховані.", "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return false;
-                    }
-                    break;
-                case 6:
-                case 7:
-                    if (processor.GetWordsNgrams().Count == 0)
-                    {
-                        MessageBox.Show("Словесні n-грами ще не пораховані.", "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return false;
-                    }
-                    break;
-            }
-            return true;
-        }
-
-
-        private bool CheckCharacterNgramLength(string ngram, int nPrime, int maxNValue, int mode)
-        {
-            if (mode == 0 || mode == 3)
-            {
-                if (nPrime > maxNValue)
-                {
-                    MessageBox.Show($"n' ({nPrime}) не може бути більше n ({maxNValue}), яке було встановлено в MainForm.",
-                        "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return false;
-                }
-
-                if (ngram.Length > nPrime)
-                {
-                    MessageBox.Show($"Довжина n-грами ({ngram.Length}) перевищує n' ({nPrime}).",
-                        "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return false;
-                }
-            }
-
-            if ((mode == 1 || mode == 2 || mode == 4 || mode == 5) && ngram.Length > maxNValue)
-            {
-                MessageBox.Show($"Довжина n-грами ({ngram.Length}) перевищує n ({maxNValue}), яке було встановлено в MainForm.",
-                    "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return false;
-            }
-
-            return true;
-        }
-
-        private bool CheckWordNgram(string ngram, int nPrime, int maxNValue, int mode)
-        {
-            int wordCount = ngram.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
-
-            if (nPrime > maxNValue)
-            {
-                MessageBox.Show($"n' ({nPrime}) не може бути більше n ({maxNValue}), яке було встановлено в MainForm.",
-                    "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return false;
-            }
-
-            if (mode == 6 && wordCount > nPrime)
-            {
-                MessageBox.Show($"Кількість слів ({wordCount}) перевищує n' ({nPrime}).",
-                    "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return false;
-            }
-
-            return true;
-        }
-
-        private bool ValidateWordNgramInput(string rawInput)
-        {
-            if (string.IsNullOrWhiteSpace(rawInput))
-            {
-                MessageBox.Show("Поле n-грами не може бути порожнім або містити лише пробіли.",
-                    "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return false;
-            }
-
-            if (rawInput.StartsWith(" ") || rawInput.EndsWith(" "))
-            {
-                MessageBox.Show("Введена n-грама має пробіли на початку або в кінці.",
-                    "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return false;
-            }
-
-            if (rawInput.Contains("  "))
-            {
-                MessageBox.Show("Введена n-грама містить подвійні пробіли всередині.",
-                    "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return false;
-            }
-
-            string[] words = rawInput.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            Regex validWord = new Regex(@"^[a-zA-Zа-яА-Я0-9]+$");
-
-            foreach (string word in words)
-            {
-                if (!validWord.IsMatch(word))
-                {
-                    MessageBox.Show($"Некоректна n-грама: слово \"{word}\" містить недопустимі символи.\n" +
-                        "Слова можуть містити лише літери та цифри.",
-                        "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
+       
+        
     }
 }
