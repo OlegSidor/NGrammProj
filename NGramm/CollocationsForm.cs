@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
+using NGramm;
 
 namespace NGramm
 {
@@ -38,18 +39,18 @@ namespace NGramm
             this.maxNValue = maxNValue;
             InitializeComponents();
 
-
+            nPrimeSelector.Maximum = maxNValue;
+            nPrimeSelector.Value = Math.Min(maxNValue, nPrimeSelector.Maximum);
 
         }
 
         private void ModeSelector_SelectedIndexChanged(object sender, EventArgs e)
         {
             var modesWithNPrime = new HashSet<int> { 0, 3, 6 };
-            var modesWithoutInput = new HashSet<int> { }; // додай індекси, де не треба введення вручну
+            var modesWithoutInput = new HashSet<int> { };
 
             bool showNPrime = modesWithNPrime.Contains(modeSelector.SelectedIndex);
-            bool showInput = !modesWithoutInput.Contains(modeSelector.SelectedIndex); // якщо треба приховувати в деяких режимах
-
+            bool showInput = !modesWithoutInput.Contains(modeSelector.SelectedIndex);
             nPrimeSelector.Visible = showNPrime;
             nPrimeLabel.Visible = showNPrime;
             inputNgramTextBox.Visible = showInput;
@@ -114,6 +115,9 @@ namespace NGramm
             this.Controls.Add(searchButton);
             this.Controls.Add(saveButton);
             this.Controls.Add(resultsListView);
+
+            resultsListView.ColumnClick += ResultsListView_ColumnClick;
+            resultsListView.MouseClick += ResultsListView_MouseClick;
         }
 
         private string NormalizeSpaces(string text)
@@ -124,23 +128,40 @@ namespace NGramm
         private void SearchButton_Click(object sender, EventArgs e)
         {
 
-            string ngram = inputNgramTextBox.Text.Trim().Replace('_', ' ');
+            string ngram = useSpaces
+                ? inputNgramTextBox.Text.Replace('_', ' ')
+                : inputNgramTextBox.Text.Trim().Replace('_', ' ');
+            if (string.IsNullOrWhiteSpace(ngram))
+            {
+                MessageBox.Show("Поле n-грами не може бути порожнім.", "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            resultsListView.Items.Clear();
+
             int nPrime = (int)nPrimeSelector.Value;
             int mode = modeSelector.SelectedIndex;
             NgrammProcessor.process_spaces = useSpaces;
 
+            if (!useSpaces && (mode >= 0 && mode <= 5) && ngram.Contains(" "))
+            {
+                MessageBox.Show("Уведена n-грама містить пробіли, але опція 'враховувати пробіли' неактивна.\n" +
+                                "Увімкніть опцію або приберіть пробіли з n-грами.",
+                                "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
             int textLength = processor.endsignedTextorg.Length;
             if (fMin > 1)
             {
-                if (textLength < 1000) // дуже малий текст
+                if (textLength < 1000)
                     fMin = 1;
-                else if (textLength < 5000) // середній текст
+                else if (textLength < 5000)
                     fMin = Math.Min(fMin, 2);
-                else if (textLength < 20000) // більший текст
+                else if (textLength < 20000)
                     fMin = Math.Min(fMin, 3);
                 else if (textLength < 50000)
                     fMin = Math.Min(fMin, 5);
-                // інакше залишаємо fMin як є
             }
 
             switch (mode)
@@ -177,7 +198,7 @@ namespace NGramm
 
             if (mode == 1 || mode == 2 || mode == 4 || mode == 5)
             {
-                // буквена + символьна → рахувати довжину символів
+
                 if (ngram.Length > maxNValue)
                 {
                     MessageBox.Show($"Довжина n-грами ({ngram.Length}) перевищує n ({maxNValue}), яке було встановлено при обчисленні.",
@@ -185,37 +206,25 @@ namespace NGramm
                     return;
                 }
             }
-            if (mode == 0 || mode == 3) // буквені, символьні
+            if (mode == 0 || mode == 3)
             {
                 if (ngram.Length > nPrime)
                 {
                     MessageBox.Show($"Довжина n-грами ({ngram.Length}) перевищує n' ({nPrime}).", "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
-                if (nPrime > maxNValue)
-                {
-                    MessageBox.Show($"n' ({nPrime}) не може бути більше, ніж n ({maxNValue}), яке було встановлено при обчисленні в MainForm.",
-                        "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
             }
             else if (mode == 7 || mode == 6)
             {
-                // словесна → рахувати кількість слів
+
                 int wordCount = ngram.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
-                if (mode == 6 && nPrime > maxNValue)
-                {
-                    MessageBox.Show($"Кількість n'-грами ({nPrime}) перевищує n ({maxNValue}), яке було встановлено при обчисленні.",
-                        "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-                if(mode == 6 && wordCount > nPrime)
+                if (mode == 6 && wordCount > nPrime)
                 {
                     MessageBox.Show($"Кількість слів ({wordCount}) перевищує n` ({nPrime}), яке було встановлено при обчисленні.",
                         "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
-                if(mode==7 && wordCount > maxNValue)
+                if (mode == 7 && wordCount > maxNValue)
                 {
                     MessageBox.Show($"Кількість слів ({wordCount}) перевищує n ({maxNValue}), яке було встановлено при обчисленні.",
                         "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -226,7 +235,7 @@ namespace NGramm
             {
                 string rawInput = inputNgramTextBox.Text.Replace('_', ' ');
 
-                // 1. Пустий або лише пробіли
+
                 if (string.IsNullOrWhiteSpace(rawInput))
                 {
                     MessageBox.Show("Поле n-грами не може бути порожнім або містити лише пробіли.",
@@ -234,7 +243,7 @@ namespace NGramm
                     return;
                 }
 
-                // 2. Пробіли на початку або в кінці
+
                 if (rawInput.StartsWith(" ") || rawInput.EndsWith(" "))
                 {
                     MessageBox.Show("Введена n-грама має пробіли на початку або в кінці.",
@@ -242,7 +251,7 @@ namespace NGramm
                     return;
                 }
 
-                // 3. Подвійні пробіли всередині
+
                 if (rawInput.Contains("  "))
                 {
                     MessageBox.Show("Введена n-грама містить подвійні пробіли всередині.",
@@ -270,7 +279,7 @@ namespace NGramm
 
             switch (mode)
             {
-                case 0: // Буквена n-грама в n'-грамах
+                case 0:
                     foreach (var cont in processor.GetLiteralNgrams().Where(c => c.n == nPrime))
                     {
                         foreach (var kv in cont.GetNgrams(fMin))
@@ -283,7 +292,7 @@ namespace NGramm
                     }
                     break;
 
-                case 1: // Буквена n-грама в словах
+                case 1:
                     foreach (var word in processor.Words(processor.unsignedTextorg))
                     {
                         string key = NgrammProcessor.ignore_case ? word.Value.ToLower() : word.Value;
@@ -297,7 +306,7 @@ namespace NGramm
                     }
                     break;
 
-                case 2: // Буквена n-грама в реченнях
+                case 2:
                     foreach (var sentence in processor.endsignedTextorg.Split(new[] { '.', '?', '!', '\n' }, StringSplitOptions.RemoveEmptyEntries))
                     {
                         string key = NgrammProcessor.ignore_case ? sentence.ToLower() : sentence;
@@ -311,7 +320,7 @@ namespace NGramm
                     }
                     break;
 
-                case 3: // Символьна n-грама в n'-грамах
+                case 3:
                     foreach (var cont in processor.GetSymbolNgrams().Where(c => c.n == nPrime))
                     {
                         foreach (var kv in cont.GetNgrams(fMin))
@@ -324,7 +333,7 @@ namespace NGramm
                     }
                     break;
 
-                case 4: // Символьна n-грама в словах
+                case 4:
                     foreach (var word in processor.Words(processor.rawTextorg))
                     {
                         string key = NgrammProcessor.ignore_case ? word.Value.ToLower() : word.Value;
@@ -338,7 +347,7 @@ namespace NGramm
                     }
                     break;
 
-                case 5: // Символьна n-грама в реченнях
+                case 5:
                     foreach (var sentence in processor.rawTextorg.Split(new[] { '.', '?', '!', '\n' }, StringSplitOptions.RemoveEmptyEntries))
                     {
                         string key = NgrammProcessor.ignore_case ? sentence.ToLower() : sentence;
@@ -428,7 +437,7 @@ namespace NGramm
                             return;
                         }
 
-                        // !!! найшвидший і стабільний варіант
+
                         char[] delimiters = { '.', '?', '!', '\n' };
                         string[] sentences = processor.rawTextorg.Split(delimiters, StringSplitOptions.RemoveEmptyEntries);
 
@@ -468,6 +477,8 @@ namespace NGramm
                 resultsListView.Items.Add(item);
                 rank++;
             }
+
+            MessageBox.Show("Пошук завершено", "Успіх", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void SaveButton_Click(object sender, EventArgs e)
@@ -489,7 +500,26 @@ namespace NGramm
             }
         }
 
-       
-        
+        private void ResultsListView_ColumnClick(object sender, ColumnClickEventArgs e)
+        {
+            resultsListView.ListViewItemSorter = new CollocationListViewSorter(e.Column);
+        }
+        private void ResultsListView_MouseClick(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right)
+            {
+                var info = resultsListView.HitTest(e.Location);
+
+                if (info.Item != null)
+                {
+                    string toCopy = info.Item.SubItems.Count > 1 ? info.Item.SubItems[1].Text : info.Item.Text;
+                    Clipboard.SetText(toCopy);
+
+                    MessageBox.Show("Скопійовано: " + toCopy, "Буфер обміну", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+        }
+
+
     }
 }

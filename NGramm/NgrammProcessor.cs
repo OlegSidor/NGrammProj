@@ -427,7 +427,7 @@ namespace NGramm
 
                 if (!show_NBS)
                 {
-                    text = spacesInRow.Replace(text, " ");
+                    text = new string(text.Where(x => !NonRenderingCategories(x)).ToArray());
                 }
             }
 
@@ -711,38 +711,7 @@ namespace NGramm
             return segmenter.Cut(text, true).ToArray();
         }
 
-        public static List<string> SentenceSplitter(string text)
-        {
-            List<string> sentences = new List<string>();
-            if (string.IsNullOrWhiteSpace(text))
-                return sentences;
-
-            StringBuilder sentenceBuilder = new StringBuilder();
-            char[] endSigns = { '.', '?', '!', '।', '።', '。', '！', '？' };  // можна доповнити
-
-            foreach (char c in text)
-            {
-                sentenceBuilder.Append(c);
-
-                if (endSigns.Contains(c))
-                {
-                    string sentence = sentenceBuilder.ToString().Trim();
-                    if (!string.IsNullOrWhiteSpace(sentence))
-                        sentences.Add(sentence);
-                    sentenceBuilder.Clear();
-                }
-            }
-
-            // якщо залишився "хвіст" без розділового знака
-            if (sentenceBuilder.Length > 0)
-            {
-                string lastSentence = sentenceBuilder.ToString().Trim();
-                if (!string.IsNullOrWhiteSpace(lastSentence))
-                    sentences.Add(lastSentence);
-            }
-
-            return sentences;
-        }
+        
 
 
 
