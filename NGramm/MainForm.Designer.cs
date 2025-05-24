@@ -87,6 +87,7 @@
             this.numericUpDown1 = new System.Windows.Forms.NumericUpDown();
             this.label5 = new System.Windows.Forms.Label();
             this.OperationNameLabel = new System.Windows.Forms.Label();
+            this.CollocationsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
@@ -110,7 +111,8 @@
             this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.файлToolStripMenuItem,
             this.порахуватиToolStripMenuItem,
-            this.еуіеToolStripMenuItem});
+            this.еуіеToolStripMenuItem,
+            this.CollocationsToolStripMenuItem});
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
             this.menuStrip1.Name = "menuStrip1";
             this.menuStrip1.Padding = new System.Windows.Forms.Padding(4, 2, 0, 2);
@@ -178,7 +180,7 @@
             this.tabPage1.Controls.Add(this.LiteralCountSpaces);
             this.tabPage1.Location = new System.Drawing.Point(4, 22);
             this.tabPage1.Name = "tabPage1";
-            this.tabPage1.Padding = new System.Windows.Forms.Padding(3, 3, 3, 3);
+            this.tabPage1.Padding = new System.Windows.Forms.Padding(3);
             this.tabPage1.Size = new System.Drawing.Size(205, 75);
             this.tabPage1.TabIndex = 0;
             this.tabPage1.Text = "Буквені";
@@ -201,7 +203,7 @@
             this.tabPage3.Controls.Add(this.SymbolsCountSpaces);
             this.tabPage3.Location = new System.Drawing.Point(4, 22);
             this.tabPage3.Name = "tabPage3";
-            this.tabPage3.Padding = new System.Windows.Forms.Padding(3, 3, 3, 3);
+            this.tabPage3.Padding = new System.Windows.Forms.Padding(3);
             this.tabPage3.Size = new System.Drawing.Size(205, 75);
             this.tabPage3.TabIndex = 2;
             this.tabPage3.Text = "Символьні";
@@ -211,7 +213,7 @@
             // 
             this.consequtiveSpaces.AutoSize = true;
             this.consequtiveSpaces.Location = new System.Drawing.Point(105, 5);
-            this.consequtiveSpaces.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.consequtiveSpaces.Margin = new System.Windows.Forms.Padding(2);
             this.consequtiveSpaces.Name = "consequtiveSpaces";
             this.consequtiveSpaces.Size = new System.Drawing.Size(40, 17);
             this.consequtiveSpaces.TabIndex = 2;
@@ -222,7 +224,7 @@
             // 
             this.ShowNPS.AutoSize = true;
             this.ShowNPS.Location = new System.Drawing.Point(3, 24);
-            this.ShowNPS.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.ShowNPS.Margin = new System.Windows.Forms.Padding(2);
             this.ShowNPS.Name = "ShowNPS";
             this.ShowNPS.Size = new System.Drawing.Size(100, 17);
             this.ShowNPS.TabIndex = 1;
@@ -234,7 +236,7 @@
             // 
             this.SymbolsCountSpaces.AutoSize = true;
             this.SymbolsCountSpaces.Location = new System.Drawing.Point(3, 5);
-            this.SymbolsCountSpaces.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.SymbolsCountSpaces.Margin = new System.Windows.Forms.Padding(2);
             this.SymbolsCountSpaces.Name = "SymbolsCountSpaces";
             this.SymbolsCountSpaces.Size = new System.Drawing.Size(66, 17);
             this.SymbolsCountSpaces.TabIndex = 0;
@@ -247,7 +249,7 @@
             this.tabPage2.Controls.Add(this.wordOptionsPanel);
             this.tabPage2.Location = new System.Drawing.Point(4, 22);
             this.tabPage2.Name = "tabPage2";
-            this.tabPage2.Padding = new System.Windows.Forms.Padding(3, 3, 3, 3);
+            this.tabPage2.Padding = new System.Windows.Forms.Padding(3);
             this.tabPage2.Size = new System.Drawing.Size(205, 75);
             this.tabPage2.TabIndex = 1;
             this.tabPage2.Text = "Словесні";
@@ -258,7 +260,7 @@
             this.codeWordsOptionsPanel.Controls.Add(this.ignoreComments);
             this.codeWordsOptionsPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.codeWordsOptionsPanel.Location = new System.Drawing.Point(3, 3);
-            this.codeWordsOptionsPanel.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.codeWordsOptionsPanel.Margin = new System.Windows.Forms.Padding(2);
             this.codeWordsOptionsPanel.Name = "codeWordsOptionsPanel";
             this.codeWordsOptionsPanel.Size = new System.Drawing.Size(199, 69);
             this.codeWordsOptionsPanel.TabIndex = 15;
@@ -281,7 +283,7 @@
             this.wordOptionsPanel.Controls.Add(this.label16);
             this.wordOptionsPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.wordOptionsPanel.Location = new System.Drawing.Point(3, 3);
-            this.wordOptionsPanel.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.wordOptionsPanel.Margin = new System.Windows.Forms.Padding(2);
             this.wordOptionsPanel.Name = "wordOptionsPanel";
             this.wordOptionsPanel.Size = new System.Drawing.Size(199, 69);
             this.wordOptionsPanel.TabIndex = 14;
@@ -540,7 +542,7 @@
             // toolStripStatusLabel1
             // 
             this.toolStripStatusLabel1.Name = "toolStripStatusLabel1";
-            this.toolStripStatusLabel1.Size = new System.Drawing.Size(102, 17);
+            this.toolStripStatusLabel1.Size = new System.Drawing.Size(103, 17);
             this.toolStripStatusLabel1.Text = "Текст не вибрано";
             // 
             // groupBox4
@@ -563,7 +565,7 @@
             // 
             this.CommonRankBox.AutoSize = true;
             this.CommonRankBox.Location = new System.Drawing.Point(6, 161);
-            this.CommonRankBox.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.CommonRankBox.Margin = new System.Windows.Forms.Padding(2);
             this.CommonRankBox.Name = "CommonRankBox";
             this.CommonRankBox.Size = new System.Drawing.Size(96, 17);
             this.CommonRankBox.TabIndex = 8;
@@ -604,7 +606,7 @@
             // ShowPlotsButton
             // 
             this.ShowPlotsButton.Location = new System.Drawing.Point(246, 300);
-            this.ShowPlotsButton.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.ShowPlotsButton.Margin = new System.Windows.Forms.Padding(2);
             this.ShowPlotsButton.Name = "ShowPlotsButton";
             this.ShowPlotsButton.Size = new System.Drawing.Size(172, 24);
             this.ShowPlotsButton.TabIndex = 10;
@@ -682,6 +684,13 @@
             this.OperationNameLabel.Name = "OperationNameLabel";
             this.OperationNameLabel.Size = new System.Drawing.Size(0, 13);
             this.OperationNameLabel.TabIndex = 14;
+            // 
+            // CollocationsToolStripMenuItem
+            // 
+            this.CollocationsToolStripMenuItem.Name = "CollocationsToolStripMenuItem";
+            this.CollocationsToolStripMenuItem.Size = new System.Drawing.Size(72, 23);
+            this.CollocationsToolStripMenuItem.Text = "Колокації";
+            this.CollocationsToolStripMenuItem.Click += new System.EventHandler(this.CollocationsToolStripMenuItem_Click);
             // 
             // MainForm
             // 
@@ -796,6 +805,7 @@
         private System.Windows.Forms.Panel codeWordsOptionsPanel;
         private System.Windows.Forms.CheckBox ignoreComments;
         private System.Windows.Forms.Panel wordOptionsPanel;
+        private System.Windows.Forms.ToolStripMenuItem CollocationsToolStripMenuItem;
     }
 }
 
