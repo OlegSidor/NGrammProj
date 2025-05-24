@@ -1,0 +1,47 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*' 
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup Python 3.6.8
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.6.8'
+
+    - name: Install PyInstaller
+      run: pip install pyinstaller
+
+    - name: Build Python project
+      run: pyinstaller --onefile --console --distpath .\NGramm\CodeTokenizatorTool .\Tokenizer\tokenizer.py
+
+    - name: Find MSBuild path
+      id: msbuild
+      run: |
+        $path = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe
+        echo "MSBUILD_PATH=$path" >> $env:GITHUB_ENV
+
+    - name: Restore NuGet packages
+      run: nuget restore .\NGramm\NGramm.csproj
+
+    - name: Build C# .NET Framework project
+      run: |
+        & "$env:MSBUILD_PATH" .\NGramm\NGramm.csproj /p:Configuration=Release /p:Platform=win-x64
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          NGramm/bin/win-x64/Release/net48/NGramm.exe
+          NGramm/CodeTokenizatorTool/tokenizer.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
