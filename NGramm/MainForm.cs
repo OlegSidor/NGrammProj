@@ -1080,7 +1080,7 @@ namespace NGramm
             }
 
             int nValue = int.Parse(N.Text);
-            var collocationsForm = new CollocationsForm(processor, IndexPorah, NgrammProcessor.process_spaces, nValue);
+            var collocationsForm = new CollocationsForm(processor, NgrammProcessor.process_spaces, nValue);
             collocationsForm.ShowDialog();
         }
     }

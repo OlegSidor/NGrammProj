@@ -2,24 +2,41 @@
 using System.Collections;
 using System.Windows.Forms;
 
-namespace NGramm
+public class CollocationListViewSorter : IComparer
 {
-    public class CollocationListViewSorter : IComparer
+    private int columnIndex;
+    private bool ascending;
+
+    public CollocationListViewSorter(int columnIndex, bool ascending = true)
     {
-        private readonly int col;
+        this.columnIndex = columnIndex;
+        this.ascending = ascending;
+    }
 
-        public CollocationListViewSorter(int column)
+    public int Compare(object x, object y)
+    {
+        ListViewItem item1 = (ListViewItem)x;
+        ListViewItem item2 = (ListViewItem)y;
+
+        string val1 = item1.SubItems[columnIndex].Text;
+        string val2 = item2.SubItems[columnIndex].Text;
+
+        int result;
+
+        // Числове сортування для колонок # або Частота
+        if (columnIndex == 0 || columnIndex == 2)
         {
-            col = column;
+            if (int.TryParse(val1, out int n1) && int.TryParse(val2, out int n2))
+                result = n1.CompareTo(n2);
+            else
+                result = string.Compare(val1, val2, StringComparison.OrdinalIgnoreCase);
+        }
+        else
+        {
+            // Стандартне алфавітне сортування
+            result = string.Compare(val1, val2, StringComparison.OrdinalIgnoreCase);
         }
 
-        public int Compare(object x, object y)
-        {
-            string a = ((ListViewItem)x).SubItems[col].Text;
-            string b = ((ListViewItem)y).SubItems[col].Text;
-
-            // Сортування як текст (лексикографічно), включно з колонкою "#"
-            return string.Compare(a, b, StringComparison.OrdinalIgnoreCase);
-        }
+        return ascending ? result : -result;
     }
 }
