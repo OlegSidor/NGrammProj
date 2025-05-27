@@ -25,16 +25,16 @@ namespace NGramm
         private Button saveButton;
         private ListView resultsListView;
         private readonly NgrammProcessor processor;
-        private int fMin;
         private readonly bool useSpaces;
         private Label nPrimeLabel;
         private Label inputLabel;
+        private ColumnHeader columnElementHeader;
 
         private readonly int maxNValue;
-        public CollocationsForm(NgrammProcessor processor, int fMin, bool useSpaces, int maxNValue)
+        public CollocationsForm(NgrammProcessor processor, bool useSpaces, int maxNValue)
+
         {
             this.processor = processor;
-            this.fMin = fMin;
             this.useSpaces = useSpaces;
             this.maxNValue = maxNValue;
             InitializeComponents();
@@ -55,6 +55,31 @@ namespace NGramm
             nPrimeLabel.Visible = showNPrime;
             inputNgramTextBox.Visible = showInput;
             inputLabel.Visible = showInput;
+
+            // Динамічна зміна заголовку колонки
+            switch (modeSelector.SelectedIndex)
+            {
+                case 0:
+                case 3:
+                case 6:
+                    columnElementHeader.Text = "n'-грама";
+                    break;
+                case 1:
+                case 4:
+                    columnElementHeader.Text = "Слово";
+                    break;
+                case 2:
+                case 5:
+                case 7:
+                    columnElementHeader.Text = "Речення";
+                    break;
+                default:
+                    columnElementHeader.Text = "Елемент";
+                    break;
+            }
+
+            // Примусове оновлення ListView
+            resultsListView.Refresh();
         }
 
         private void InitializeComponents()
@@ -101,8 +126,9 @@ namespace NGramm
                 FullRowSelect = true,
                 GridLines = true
             };
+            columnElementHeader = new ColumnHeader { Text = "Елемент", Width = 500 };
             resultsListView.Columns.Add("#", 50);
-            resultsListView.Columns.Add("Кількість", 500);
+            resultsListView.Columns.Add(columnElementHeader);
             resultsListView.Columns.Add("Частота", 150);
 
             this.Controls.Add(inputLabel);
@@ -150,20 +176,6 @@ namespace NGramm
                                 "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-
-            int textLength = processor.endsignedTextorg.Length;
-            if (fMin > 1)
-            {
-                if (textLength < 1000)
-                    fMin = 1;
-                else if (textLength < 5000)
-                    fMin = Math.Min(fMin, 2);
-                else if (textLength < 20000)
-                    fMin = Math.Min(fMin, 3);
-                else if (textLength < 50000)
-                    fMin = Math.Min(fMin, 5);
-            }
-
             switch (mode)
             {
                 case 0:
@@ -282,7 +294,7 @@ namespace NGramm
                 case 0:
                     foreach (var cont in processor.GetLiteralNgrams().Where(c => c.n == nPrime))
                     {
-                        foreach (var kv in cont.GetNgrams(fMin))
+                        foreach (var kv in cont.GetNgrams())
                         {
                             string key = NgrammProcessor.ignore_case ? kv.Key.ToLower() : kv.Key;
                             string cmp = NgrammProcessor.ignore_case ? ngram.ToLower() : ngram;
@@ -323,7 +335,7 @@ namespace NGramm
                 case 3:
                     foreach (var cont in processor.GetSymbolNgrams().Where(c => c.n == nPrime))
                     {
-                        foreach (var kv in cont.GetNgrams(fMin))
+                        foreach (var kv in cont.GetNgrams())
                         {
                             string key = NgrammProcessor.ignore_case ? kv.Key.ToLower() : kv.Key;
                             string cmp = NgrammProcessor.ignore_case ? ngram.ToLower() : ngram;
@@ -387,10 +399,7 @@ namespace NGramm
                             if (cont.n != nPrime)
                                 continue;
 
-                            var ngrams = cont.GetNgrams(fMin).ToList();
-
-                            if (!ngrams.Any())
-                                MessageBox.Show($"[ПОПЕРЕДЖЕННЯ] У контейнері n={nPrime} GetNgrams(fMin={fMin}) повернув 0 n-грам. Можливо, всі частоти = 1?");
+                            var ngrams = cont.GetNgrams().ToList();
 
                             foreach (var kv in ngrams)
                             {
@@ -420,7 +429,6 @@ namespace NGramm
                     }
                 case 7:
                     {
-                        fMin = 1;
                         if (string.IsNullOrWhiteSpace(processor.rawTextorg))
                         {
                             MessageBox.Show("Текст не завантажений або пустий.");
@@ -467,7 +475,7 @@ namespace NGramm
 
             }
 
-            var sorted = result.Where(r => r.Value >= fMin).OrderByDescending(r => r.Value).ToList();
+            var sorted = result.OrderByDescending(r => r.Value).ToList();
             int rank = 1;
             foreach (var kv in sorted)
             {
@@ -480,6 +488,9 @@ namespace NGramm
 
             MessageBox.Show("Пошук завершено", "Успіх", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
+
+        
+
 
         private void SaveButton_Click(object sender, EventArgs e)
         {
@@ -519,7 +530,6 @@ namespace NGramm
                 }
             }
         }
-
-
     }
+
 }
