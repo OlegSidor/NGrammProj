@@ -715,7 +715,7 @@ namespace NGramm
 
 
 
-        private string RemoveConsequtiveSpaces(string input)
+        public string RemoveConsequtiveSpaces(string input)
         {
             var result = input;
             foreach (string item in consequtive_spaces_pattern)
