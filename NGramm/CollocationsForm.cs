@@ -305,8 +305,15 @@ namespace NGramm
                         {
                             string key = NgrammProcessor.ignore_case ? kv.Key.ToLower() : kv.Key;
                             string cmp = NgrammProcessor.ignore_case ? ngram.ToLower() : ngram;
+
                             if (key.Contains(cmp))
-                                result[kv.Key] = kv.Value;
+                            {
+                                string normalized = NgrammProcessor.ignore_case ? kv.Key.ToLower() : kv.Key;
+                                if (result.ContainsKey(normalized))
+                                    result[normalized] += kv.Value;
+                                else
+                                    result[normalized] = kv.Value;
+                            }
                         }
                     }
                     break;
@@ -316,11 +323,14 @@ namespace NGramm
                     {
                         string key = NgrammProcessor.ignore_case ? word.Value.ToLower() : word.Value;
                         string cmp = NgrammProcessor.ignore_case ? ngram.ToLower() : ngram;
+
                         if (key.Contains(cmp))
                         {
-                            if (!result.ContainsKey(word.Value))
-                                result[word.Value] = 0;
-                            result[word.Value]++;
+                            string normalized = NgrammProcessor.ignore_case ? word.Value.ToLower() : word.Value;
+                            if (result.ContainsKey(normalized))
+                                result[normalized]++;
+                            else
+                                result[normalized] = 1;
                         }
                     }
                     break;
@@ -328,14 +338,19 @@ namespace NGramm
                 case 2:
                     foreach (var sentence in Regex.Split(processor.endsignedTextorg, @"(?<=[\.\?!。！？؟｡٫۔…⁇⁈⁉\u061F\u06D4\u0964\u0965])"))
                     {
-                        string cleanedSentence = processor.RemoveConsequtiveSpaces(Regex.Replace(sentence.Replace("\n", " ").Replace("\r", " "), @"[\p{P}\p{S}]", "").Trim());
+                        string cleanedSentence = processor.RemoveConsequtiveSpaces(
+                            Regex.Replace(sentence.Replace("\n", " ").Replace("\r", " "), @"[\p{P}\p{S}]", "").Trim());
+
                         string key = NgrammProcessor.ignore_case ? sentence.ToLower() : sentence;
                         string cmp = NgrammProcessor.ignore_case ? ngram.ToLower() : ngram;
+
                         if (key.Contains(cmp))
                         {
-                            if (!result.ContainsKey(cleanedSentence))
-                                result[cleanedSentence] = 0;
-                            result[cleanedSentence]++;
+                            string normalized = NgrammProcessor.ignore_case ? cleanedSentence.ToLower() : cleanedSentence;
+                            if (result.ContainsKey(normalized))
+                                result[normalized]++;
+                            else
+                                result[normalized] = 1;
                         }
                     }
                     break;
@@ -347,20 +362,26 @@ namespace NGramm
                         {
                             string key = NgrammProcessor.ignore_case ? kv.Key.ToLower() : kv.Key;
                             string cmp = NgrammProcessor.ignore_case ? ngram.ToLower() : ngram;
+
                             if (key.Contains(cmp))
-                                result[kv.Key] = kv.Value;
+                            {
+                                string normalized = NgrammProcessor.ignore_case ? kv.Key.ToLower() : kv.Key;
+                                if (result.ContainsKey(normalized))
+                                    result[normalized] += kv.Value;
+                                else
+                                    result[normalized] = kv.Value;
+                            }
                         }
                     }
                     break;
+
 
                 case 4:
                     {
                         Regex wordExtractRegex = new Regex(@"[\p{L}\p{M}\p{N}ʼ'’-]+", RegexOptions.Compiled);
 
                         char[] disallowedChars = new char[]
-                        {
-                            '?', '!', '。', '！', '？', '｡', '٫', '۔', '…', '⁇', '⁈', '⁉'
-                        };
+                        {'?', '!', '。', '！', '？', '｡', '٫', '۔', '…', '⁇', '⁈', '⁉'};
 
                         string text = processor.rawTextorg;
 
@@ -376,9 +397,11 @@ namespace NGramm
 
                             if (clean.Contains(cmp))
                             {
-                                if (!result.ContainsKey(word))
-                                    result[word] = 0;
-                                result[word]++;
+                                string normalized = NgrammProcessor.ignore_case ? word.ToLower() : word;
+                                if (result.ContainsKey(normalized))
+                                    result[normalized]++;
+                                else
+                                    result[normalized] = 1;
                             }
                         }
 
@@ -390,7 +413,6 @@ namespace NGramm
                         foreach (var sentence in Regex.Split(processor.rawTextorg,
                             @"(?<=[\.\?!。！？؟｡٫۔…⁇⁈⁉\u061F\u06D4\u0964\u0965])"))
                         {
-
                             string cleanedSentence = processor.RemoveConsequtiveSpaces(
                                 sentence.Replace("\n", " ").Replace("\r", " ").Trim()
                             );
@@ -408,10 +430,14 @@ namespace NGramm
 
                             if (key.Contains(cmp))
                             {
-                                if (!result.ContainsKey(cleanedSentence))
-                                    result[cleanedSentence] = 0;
+                                string normalized = NgrammProcessor.ignore_case
+                                    ? cleanedSentence.ToLower()
+                                    : cleanedSentence;
 
-                                result[cleanedSentence]++;
+                                if (result.ContainsKey(normalized))
+                                    result[normalized]++;
+                                else
+                                    result[normalized] = 1;
                             }
                         }
 
@@ -490,7 +516,11 @@ namespace NGramm
 
                                 if (found)
                                 {
-                                    result[kv.Key] = kv.Value;
+                                    string normalized = NgrammProcessor.ignore_case ? kv.Key.ToLower() : kv.Key;
+                                    if (result.ContainsKey(normalized))
+                                        result[normalized] += kv.Value;
+                                    else
+                                        result[normalized] = kv.Value;
                                 }
                             }
                         }
@@ -571,10 +601,12 @@ namespace NGramm
 
                             if (foundAsSequence)
                             {
-                                string normalized = cleanedSentence;
-                                if (!result.ContainsKey(normalized))
-                                    result[normalized] = 0;
-                                result[normalized]++;
+                                string normalized = NgrammProcessor.ignore_case ? cleanedSentence.ToLower() : cleanedSentence;
+
+                                if (result.ContainsKey(normalized))
+                                    result[normalized]++;
+                                else
+                                    result[normalized] = 1;
                             }
                         }
 
@@ -653,6 +685,14 @@ namespace NGramm
 
             resultsListView.ListViewItemSorter = new CollocationListViewSorter(e.Column, sortAscending);
             resultsListView.Sort();
+        }
+        private void AddToResult(Dictionary<string, int> result, string key, int count)
+        {
+            string normalizedKey = NgrammProcessor.ignore_case ? key.ToLower() : key;
+            if (result.ContainsKey(normalizedKey))
+                result[normalizedKey] += count;
+            else
+                result[normalizedKey] = count;
         }
         private void ResultsListView_MouseClick(object sender, MouseEventArgs e)
         {
