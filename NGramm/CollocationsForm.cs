@@ -303,16 +303,16 @@ namespace NGramm
                     {
                         foreach (var kv in cont.GetNgrams())
                         {
-                            string key = NgrammProcessor.ignore_case ? kv.Key.ToLower() : kv.Key;
+                            string keyForCompare = NgrammProcessor.ignore_case ? kv.Key.ToLower() : kv.Key;
                             string cmp = NgrammProcessor.ignore_case ? ngram.ToLower() : ngram;
 
-                            if (key.Contains(cmp))
+                            if (keyForCompare.Contains(cmp))
                             {
-                                string normalized = NgrammProcessor.ignore_case ? kv.Key.ToLower() : kv.Key;
-                                if (result.ContainsKey(normalized))
-                                    result[normalized] += kv.Value;
+                                string originalKey = kv.Key; 
+                                if (result.ContainsKey(originalKey))
+                                    result[originalKey] += kv.Value;
                                 else
-                                    result[normalized] = kv.Value;
+                                    result[originalKey] = kv.Value;
                             }
                         }
                     }
@@ -336,24 +336,36 @@ namespace NGramm
                     break;
 
                 case 2:
-                    foreach (var sentence in Regex.Split(processor.endsignedTextorg, @"(?<=[\.\?!。！？؟｡٫۔…⁇⁈⁉\u061F\u06D4\u0964\u0965])"))
                     {
-                        string cleanedSentence = processor.RemoveConsequtiveSpaces(
-                            Regex.Replace(sentence.Replace("\n", " ").Replace("\r", " "), @"[\p{P}\p{S}]", "").Trim());
+                        // Заміна \n\n на <SPLIT>, а потім ділення по <SPLIT> або знаку кінця речення
+                        var sentences = Regex.Split(
+                            Regex.Replace(processor.endsignedTextorg, @"\n{2,}", "<SPLIT>"),
+                            @"<SPLIT>|(?<=[\.\?!。！？؟｡٫۔…⁇⁈⁉\u061F\u06D4\u0964\u0965])"
+                        );
 
-                        string key = NgrammProcessor.ignore_case ? sentence.ToLower() : sentence;
-                        string cmp = NgrammProcessor.ignore_case ? ngram.ToLower() : ngram;
-
-                        if (key.Contains(cmp))
+                        foreach (var sentence in sentences)
                         {
-                            string normalized = NgrammProcessor.ignore_case ? cleanedSentence.ToLower() : cleanedSentence;
-                            if (result.ContainsKey(normalized))
-                                result[normalized]++;
-                            else
-                                result[normalized] = 1;
+                            string cleanedSentence = processor.RemoveConsequtiveSpaces(
+                                Regex.Replace(sentence.Replace("\n", " ").Replace("\r", " "), @"[\p{P}\p{S}]", "").Trim());
+
+                            if (string.IsNullOrWhiteSpace(cleanedSentence))
+                                continue;
+
+                            string key = NgrammProcessor.ignore_case ? sentence.ToLower() : sentence;
+                            string cmp = NgrammProcessor.ignore_case ? ngram.ToLower() : ngram;
+
+                            if (key.Contains(cmp))
+                            {
+                                string normalized = NgrammProcessor.ignore_case ? cleanedSentence.ToLower() : cleanedSentence;
+
+                                if (result.ContainsKey(normalized))
+                                    result[normalized]++;
+                                else
+                                    result[normalized] = 1;
+                            }
                         }
+                        break;
                     }
-                    break;
 
                 case 3:
                     foreach (var cont in processor.GetSymbolNgrams().Where(c => c.n == nPrime))
@@ -410,8 +422,13 @@ namespace NGramm
 
                 case 5:
                     {
-                        foreach (var sentence in Regex.Split(processor.rawTextorg,
-                            @"(?<=[\.\?!。！？؟｡٫۔…⁇⁈⁉\u061F\u06D4\u0964\u0965])"))
+                        // Розбиваємо по <SPLIT> (для \n\n) або знаках кінця речення
+                        var sentences = Regex.Split(
+                            Regex.Replace(processor.rawTextorg, @"\n{2,}", "<SPLIT>"),
+                            @"<SPLIT>|(?<=[\.\?!。！？؟｡٫۔…⁇⁈⁉\u061F\u06D4\u0964\u0965])"
+                        );
+
+                        foreach (var sentence in sentences)
                         {
                             string cleanedSentence = processor.RemoveConsequtiveSpaces(
                                 sentence.Replace("\n", " ").Replace("\r", " ").Trim()
@@ -560,13 +577,16 @@ namespace NGramm
                             return;
                         }
 
-                        // Універсальне розбиття на речення для багатьох мов
-                        string[] sentences = Regex.Split(processor.endsignedTextorg,
-                            @"(?<=[\.\?!。！？؟｡٫۔…⁇⁈⁉\u061F\u06D4\u0964\u0965])");
+                        // Розділяємо речення за двома ентерами або знаками кінця речення
+                        string[] sentences = Regex.Split(
+                            Regex.Replace(processor.endsignedTextorg, @"\n{2,}", "<SPLIT>"),
+                            @"<SPLIT>|(?<=[\.\?!。！？؟｡٫۔…⁇⁈⁉\u061F\u06D4\u0964\u0965])"
+                        );
 
                         foreach (var sentence in sentences)
                         {
-                            string cleanedSentence = processor.RemoveConsequtiveSpaces(Regex.Replace(sentence.Replace("\n", " ").Replace("\r", " "), @"[\p{P}\p{S}]", "").Trim());
+                            string cleanedSentence = processor.RemoveConsequtiveSpaces(
+                                Regex.Replace(sentence.Replace("\n", " ").Replace("\r", " "), @"[\p{P}\p{S}]", "").Trim());
 
                             if (string.IsNullOrWhiteSpace(cleanedSentence))
                                 continue;
@@ -601,7 +621,9 @@ namespace NGramm
 
                             if (foundAsSequence)
                             {
-                                string normalized = NgrammProcessor.ignore_case ? cleanedSentence.ToLower() : cleanedSentence;
+                                string normalized = NgrammProcessor.ignore_case
+                                    ? cleanedSentence.ToLower()
+                                    : cleanedSentence;
 
                                 if (result.ContainsKey(normalized))
                                     result[normalized]++;
@@ -685,14 +707,6 @@ namespace NGramm
 
             resultsListView.ListViewItemSorter = new CollocationListViewSorter(e.Column, sortAscending);
             resultsListView.Sort();
-        }
-        private void AddToResult(Dictionary<string, int> result, string key, int count)
-        {
-            string normalizedKey = NgrammProcessor.ignore_case ? key.ToLower() : key;
-            if (result.ContainsKey(normalizedKey))
-                result[normalizedKey] += count;
-            else
-                result[normalizedKey] = count;
         }
         private void ResultsListView_MouseClick(object sender, MouseEventArgs e)
         {

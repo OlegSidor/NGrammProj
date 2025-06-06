@@ -142,14 +142,15 @@ namespace NGramm
                         ignore_spaces = true;
                         ignore_ends = false;
                     }
-                    else if ((ch == '\n') && !ignore_nlines)
+                    else if (ch == '\n')
                     {
                         _raw.Append(ch);
-                        added = true;
                         _uns.Append(ch);
                         _ends.Append(ch);
+                        added = true;
+
                         ignore_spaces = true;
-                        ignore_nlines = true;
+                        ignore_nlines = false; // ⬅ прибираємо пригнічення другого \n
                         ignore_ends = false;
                     }
                     else if (ss.Contains(ch))
