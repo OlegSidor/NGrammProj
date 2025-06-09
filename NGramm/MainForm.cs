@@ -83,7 +83,7 @@ namespace NGramm
             string tempDictPath = Path.Combine(Path.GetTempPath(), "jieba_dict");
             Directory.CreateDirectory(tempDictPath);
 
-            List<string> fileList = new List<string>() { "dict.txt", "prob_trans.json", "prob_emit.json", "char_state_tab.json", "cn_synonym.txt", 
+            List<string> fileList = new List<string>() { "dict.txt", "prob_trans.json", "prob_emit.json", "char_state_tab.json", "cn_synonym.txt",
                 "idf.txt", "pos_prob_emit.json", "pos_prob_start.json", "pos_prob_trans.json", "stopwords.txt" };
 
 
@@ -177,7 +177,7 @@ namespace NGramm
 
         private async void openToolStripMenuItem_Click(object sender, EventArgs e)
         {
-           
+
         }
 
         private void button2_Click(object sender, EventArgs e)
@@ -202,7 +202,7 @@ namespace NGramm
                 ListForm listForm = new ListForm(nGramListSettings);
                 listForm.Text = "N-грами " + SingleStatN.Text + " порядку";
                 var index = Convert.ToInt32(SingleStatN.Text);
-                var container = processor.GetWordsNgrams().ElementAt(index-1);
+                var container = processor.GetWordsNgrams().ElementAt(index - 1);
                 listForm.ShowContent(Helpers.SortByVal(processor.GetWordsNgrams().ElementAt(n).GetNgrams(PerformanceSettings.MinNGrammCount)), container);
                 listForm.Show();
             }
@@ -333,7 +333,9 @@ namespace NGramm
                     {
                         addNPSCategory = true;
                         wr.WriteLine("{0}\t{2}\t{1}\t{3}\t{4}", "RANK", "F", "NGramm", "Unicode", "Unicode category");
-                    } else {
+                    }
+                    else
+                    {
                         wr.WriteLine("{0}\t{2}\t{1}", "RANK", "F", "NGramm");
                     }
                     string ngr;
@@ -450,7 +452,9 @@ namespace NGramm
                     {
                         wr.WriteLine("{0}\t{2}\t{1}\t{3}", "RANK", "F", "NGramm", "Category");
                         addTokenCategory = true;
-                    } else {
+                    }
+                    else
+                    {
                         wr.WriteLine("{0}\t{2}\t{1}", "RANK", "F", "NGramm");
                     }
                     //i = 1;
@@ -860,7 +864,7 @@ namespace NGramm
         {
             IReadOnlyCollection<NGrammContainer> ngrams = new List<NGrammContainer>();
             NgrammProcessor.ignore_case = IgnoreRegisterChecbox.Checked;
-            
+
             var sizeChangeTask = Task.Run(() =>
             {
                 showSize();
@@ -1079,8 +1083,10 @@ namespace NGramm
                 return;
             }
 
+            int threshold = (int)numericUpDown2.Value;
+
             int nValue = int.Parse(N.Text);
-            var collocationsForm = new CollocationsForm(processor, NgrammProcessor.process_spaces, nValue);
+            var collocationsForm = new CollocationsForm(processor, NgrammProcessor.process_spaces, nValue, threshold);
             collocationsForm.ShowDialog();
         }
     }

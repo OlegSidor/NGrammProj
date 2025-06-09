@@ -12,6 +12,8 @@ using System.Text.RegularExpressions;
 using System.Diagnostics;
 using NGramm;
 
+//Vova was here
+
 namespace NGramm
 {
 
@@ -29,14 +31,18 @@ namespace NGramm
         private Label nPrimeLabel;
         private Label inputLabel;
         private ColumnHeader columnElementHeader;
+        private int lastSortedColumn = -1;
+        private bool sortAscending = true;
+        private readonly int frequencyThreshold;
 
         private readonly int maxNValue;
-        public CollocationsForm(NgrammProcessor processor, bool useSpaces, int maxNValue)
+        public CollocationsForm(NgrammProcessor processor, bool useSpaces, int maxNValue, int frequencyThreshold)
 
         {
             this.processor = processor;
             this.useSpaces = useSpaces;
             this.maxNValue = maxNValue;
+            this.frequencyThreshold = frequencyThreshold;
             InitializeComponents();
 
             nPrimeSelector.Maximum = maxNValue;
@@ -169,13 +175,14 @@ namespace NGramm
             int mode = modeSelector.SelectedIndex;
             NgrammProcessor.process_spaces = useSpaces;
 
-            if (!useSpaces && (mode >= 0 && mode <= 5) && ngram.Contains(" "))
+            if (!useSpaces && (mode >= 0 && mode <= 5) && inputNgramTextBox.Text.Any(char.IsWhiteSpace))
             {
-                MessageBox.Show("Уведена n-грама містить пробіли, але опція 'враховувати пробіли' неактивна.\n" +
+                MessageBox.Show("Уведена n-грама містить пробіли або пробілоподібні символи, але опція 'враховувати пробіли' неактивна.\n" +
                                 "Увімкніть опцію або приберіть пробіли з n-грами.",
                                 "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
+
             switch (mode)
             {
                 case 0:
@@ -271,7 +278,7 @@ namespace NGramm
                     return;
                 }
                 string[] words = rawInput.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                Regex validWord = new Regex(@"^[a-zA-Zа-яА-Я0-9]+$");
+                Regex validWord = new Regex(@"^[\p{L}\p{M}]+$", RegexOptions.Compiled);
 
                 foreach (string word in words)
                 {
@@ -296,10 +303,17 @@ namespace NGramm
                     {
                         foreach (var kv in cont.GetNgrams())
                         {
-                            string key = NgrammProcessor.ignore_case ? kv.Key.ToLower() : kv.Key;
+                            string keyForCompare = NgrammProcessor.ignore_case ? kv.Key.ToLower() : kv.Key;
                             string cmp = NgrammProcessor.ignore_case ? ngram.ToLower() : ngram;
-                            if (key.Contains(cmp))
-                                result[kv.Key] = kv.Value;
+
+                            if (keyForCompare.Contains(cmp))
+                            {
+                                string originalKey = kv.Key; 
+                                if (result.ContainsKey(originalKey))
+                                    result[originalKey] += kv.Value;
+                                else
+                                    result[originalKey] = kv.Value;
+                            }
                         }
                     }
                     break;
@@ -309,28 +323,49 @@ namespace NGramm
                     {
                         string key = NgrammProcessor.ignore_case ? word.Value.ToLower() : word.Value;
                         string cmp = NgrammProcessor.ignore_case ? ngram.ToLower() : ngram;
+
                         if (key.Contains(cmp))
                         {
-                            if (!result.ContainsKey(word.Value))
-                                result[word.Value] = 0;
-                            result[word.Value]++;
+                            string normalized = NgrammProcessor.ignore_case ? word.Value.ToLower() : word.Value;
+                            if (result.ContainsKey(normalized))
+                                result[normalized]++;
+                            else
+                                result[normalized] = 1;
                         }
                     }
                     break;
 
                 case 2:
-                    foreach (var sentence in processor.endsignedTextorg.Split(new[] { '.', '?', '!', '\n' }, StringSplitOptions.RemoveEmptyEntries))
                     {
-                        string key = NgrammProcessor.ignore_case ? sentence.ToLower() : sentence;
-                        string cmp = NgrammProcessor.ignore_case ? ngram.ToLower() : ngram;
-                        if (key.Contains(cmp))
+                        // Заміна \n\n на <SPLIT>, а потім ділення по <SPLIT> або знаку кінця речення
+                        var sentences = Regex.Split(
+                            Regex.Replace(processor.endsignedTextorg, @"\n{2,}", "<SPLIT>"),
+                            @"<SPLIT>|(?<=[\.\?!。！？؟｡٫۔…⁇⁈⁉\u061F\u06D4\u0964\u0965])"
+                        );
+
+                        foreach (var sentence in sentences)
                         {
-                            if (!result.ContainsKey(sentence))
-                                result[sentence] = 0;
-                            result[sentence]++;
+                            string cleanedSentence = processor.RemoveConsequtiveSpaces(
+                                Regex.Replace(sentence.Replace("\n", " ").Replace("\r", " "), @"[\p{P}\p{S}]", "").Trim());
+
+                            if (string.IsNullOrWhiteSpace(cleanedSentence))
+                                continue;
+
+                            string key = NgrammProcessor.ignore_case ? sentence.ToLower() : sentence;
+                            string cmp = NgrammProcessor.ignore_case ? ngram.ToLower() : ngram;
+
+                            if (key.Contains(cmp))
+                            {
+                                string normalized = NgrammProcessor.ignore_case ? cleanedSentence.ToLower() : cleanedSentence;
+
+                                if (result.ContainsKey(normalized))
+                                    result[normalized]++;
+                                else
+                                    result[normalized] = 1;
+                            }
                         }
+                        break;
                     }
-                    break;
 
                 case 3:
                     foreach (var cont in processor.GetSymbolNgrams().Where(c => c.n == nPrime))
@@ -339,48 +374,120 @@ namespace NGramm
                         {
                             string key = NgrammProcessor.ignore_case ? kv.Key.ToLower() : kv.Key;
                             string cmp = NgrammProcessor.ignore_case ? ngram.ToLower() : ngram;
+
                             if (key.Contains(cmp))
-                                result[kv.Key] = kv.Value;
+                            {
+                                string normalized = NgrammProcessor.ignore_case ? kv.Key.ToLower() : kv.Key;
+                                if (result.ContainsKey(normalized))
+                                    result[normalized] += kv.Value;
+                                else
+                                    result[normalized] = kv.Value;
+                            }
                         }
                     }
                     break;
+
 
                 case 4:
-                    foreach (var word in processor.Words(processor.rawTextorg))
                     {
-                        string key = NgrammProcessor.ignore_case ? word.Value.ToLower() : word.Value;
-                        string cmp = NgrammProcessor.ignore_case ? ngram.ToLower() : ngram;
-                        if (key.Contains(cmp))
+                        Regex wordExtractRegex = new Regex(@"[\p{L}\p{M}\p{N}ʼ'’-]+", RegexOptions.Compiled);
+
+                        char[] disallowedChars = new char[]
+                        {'?', '!', '。', '！', '？', '｡', '٫', '۔', '…', '⁇', '⁈', '⁉'};
+
+                        string text = processor.rawTextorg;
+
+                        foreach (Match match in wordExtractRegex.Matches(text))
                         {
-                            if (!result.ContainsKey(word.Value))
-                                result[word.Value] = 0;
-                            result[word.Value]++;
+                            string word = match.Value;
+
+                            if (word.IndexOfAny(disallowedChars) != -1)
+                                continue;
+
+                            string clean = NgrammProcessor.ignore_case ? word.ToLower() : word;
+                            string cmp = NgrammProcessor.ignore_case ? ngram.ToLower() : ngram;
+
+                            if (clean.Contains(cmp))
+                            {
+                                string normalized = NgrammProcessor.ignore_case ? word.ToLower() : word;
+                                if (result.ContainsKey(normalized))
+                                    result[normalized]++;
+                                else
+                                    result[normalized] = 1;
+                            }
                         }
+
+                        break;
                     }
-                    break;
 
                 case 5:
-                    foreach (var sentence in processor.rawTextorg.Split(new[] { '.', '?', '!', '\n' }, StringSplitOptions.RemoveEmptyEntries))
                     {
-                        string key = NgrammProcessor.ignore_case ? sentence.ToLower() : sentence;
-                        string cmp = NgrammProcessor.ignore_case ? ngram.ToLower() : ngram;
-                        if (key.Contains(cmp))
+                        // Розбиваємо по <SPLIT> (для \n\n) або знаках кінця речення
+                        var sentences = Regex.Split(
+                            Regex.Replace(processor.rawTextorg, @"\n{2,}", "<SPLIT>"),
+                            @"<SPLIT>|(?<=[\.\?!。！？؟｡٫۔…⁇⁈⁉\u061F\u06D4\u0964\u0965])"
+                        );
+
+                        foreach (var sentence in sentences)
                         {
-                            if (!result.ContainsKey(sentence))
-                                result[sentence] = 0;
-                            result[sentence]++;
+                            string cleanedSentence = processor.RemoveConsequtiveSpaces(
+                                sentence.Replace("\n", " ").Replace("\r", " ").Trim()
+                            );
+
+                            if (string.IsNullOrWhiteSpace(cleanedSentence))
+                                continue;
+
+                            string key = NgrammProcessor.ignore_case
+                                ? cleanedSentence.ToLower()
+                                : cleanedSentence;
+
+                            string cmp = NgrammProcessor.ignore_case
+                                ? ngram.ToLower()
+                                : ngram;
+
+                            if (key.Contains(cmp))
+                            {
+                                string normalized = NgrammProcessor.ignore_case
+                                    ? cleanedSentence.ToLower()
+                                    : cleanedSentence;
+
+                                if (result.ContainsKey(normalized))
+                                    result[normalized]++;
+                                else
+                                    result[normalized] = 1;
+                            }
                         }
+
+                        break;
                     }
-                    break;
 
 
                 case 6:
                     {
                         bool ignorePunctuation = NgrammProcessor.ignore_punctuation;
-                        var targetWords = processor.Words(ngram, true)
-                           .Select(x => NgrammProcessor.ignore_case ? x.Value.ToLower() : x.Value)
-                           .ToArray();
 
+                        bool isUnicodeWholePhrase = ngram.Any(ch =>
+                            (ch >= '\u3040' && ch <= '\u30FF') ||  // Japanese
+                            (ch >= '\u4E00' && ch <= '\u9FFF') ||  // Chinese
+                            (ch >= '\uAC00' && ch <= '\uD7AF') ||  // Korean
+                            (ch >= '\u0600' && ch <= '\u06FF') ||  // Arabic/Farsi/Urdu
+                            (ch >= '\u0750' && ch <= '\u077F') ||
+                            (ch >= '\u08A0' && ch <= '\u08FF') ||
+                            (ch >= '\u06F0' && ch <= '\u06F9') ||  // Persian digits
+                            (ch >= '\u0900' && ch <= '\u097F'));   // Hindi (Devanagari)
+
+                        string[] targetWords;
+
+                        if (isUnicodeWholePhrase)
+                        {
+                            targetWords = new[] { NgrammProcessor.ignore_case ? ngram.ToLower() : ngram };
+                        }
+                        else
+                        {
+                            targetWords = processor.Words(ngram, true)
+                                .Select(x => NgrammProcessor.ignore_case ? x.Value.ToLower() : x.Value)
+                                .ToArray();
+                        }
 
                         if (targetWords.Length > nPrime)
                         {
@@ -388,11 +495,7 @@ namespace NGramm
                             return;
                         }
 
-
                         var containers = processor.GetWordsNgrams();
-
-                        int candidates = 0;
-                        int checkedCandidates = 0;
 
                         foreach (var cont in containers)
                         {
@@ -404,40 +507,69 @@ namespace NGramm
                             foreach (var kv in ngrams)
                             {
                                 string candidateNormalized = NormalizeSpaces(NgrammProcessor.ignore_case ? kv.Key.ToLower() : kv.Key);
-                                string[] candidateWords = candidateNormalized.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
-                                checkedCandidates++;
+                                bool found = false;
 
-                                bool allWordsFound = true;
-                                foreach (string targetWord in targetWords)
+                                if (isUnicodeWholePhrase)
                                 {
-                                    if (!candidateWords.Contains(targetWord))
+                                    if (candidateNormalized.Contains(targetWords[0]))
+                                        found = true;
+                                }
+                                else
+                                {
+                                    string[] candidateWords = candidateNormalized
+                                        .Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+                                    for (int i = 0; i <= candidateWords.Length - targetWords.Length; i++)
                                     {
-                                        allWordsFound = false;
-                                        break;
+                                        var segment = candidateWords.Skip(i).Take(targetWords.Length);
+                                        if (string.Join(" ", segment) == string.Join(" ", targetWords))
+                                        {
+                                            found = true;
+                                            break;
+                                        }
                                     }
                                 }
 
-                                if (allWordsFound)
+                                if (found)
                                 {
-                                    result[kv.Key] = kv.Value;
-                                    candidates++;
+                                    string normalized = NgrammProcessor.ignore_case ? kv.Key.ToLower() : kv.Key;
+                                    if (result.ContainsKey(normalized))
+                                        result[normalized] += kv.Value;
+                                    else
+                                        result[normalized] = kv.Value;
                                 }
                             }
                         }
+
                         break;
                     }
+
+
                 case 7:
                     {
-                        if (string.IsNullOrWhiteSpace(processor.rawTextorg))
-                        {
-                            MessageBox.Show("Текст не завантажений або пустий.");
-                            return;
-                        }
+                        bool isUnicodeWholePhrase = ngram.Any(ch =>
+                            (ch >= '\u3040' && ch <= '\u30FF') ||  // Japanese
+                            (ch >= '\u4E00' && ch <= '\u9FFF') ||  // Chinese
+                            (ch >= '\uAC00' && ch <= '\uD7AF') ||  // Korean
+                            (ch >= '\u0600' && ch <= '\u06FF') ||  // Arabic/Farsi/Urdu
+                            (ch >= '\u0750' && ch <= '\u077F') ||
+                            (ch >= '\u08A0' && ch <= '\u08FF') ||
+                            (ch >= '\u06F0' && ch <= '\u06F9') ||  // Persian digits
+                            (ch >= '\u0900' && ch <= '\u097F'));   // Hindi (Devanagari)
 
-                        var inputWords = processor.Words(ngram, ignoreCode: true)
+                        string[] inputWords;
+
+                        if (isUnicodeWholePhrase)
+                        {
+                            inputWords = new[] { NgrammProcessor.ignore_case ? ngram.ToLower() : ngram };
+                        }
+                        else
+                        {
+                            inputWords = processor.Words(ngram, ignoreCode: true)
                                                   .Select(x => NgrammProcessor.ignore_case ? x.Value.ToLower() : x.Value)
                                                   .ToArray();
+                        }
 
                         if (inputWords.Length > maxNValue)
                         {
@@ -445,25 +577,58 @@ namespace NGramm
                             return;
                         }
 
-
-                        char[] delimiters = { '.', '?', '!', '\n' };
-                        string[] sentences = processor.rawTextorg.Split(delimiters, StringSplitOptions.RemoveEmptyEntries);
+                        // Розділяємо речення за двома ентерами або знаками кінця речення
+                        string[] sentences = Regex.Split(
+                            Regex.Replace(processor.endsignedTextorg, @"\n{2,}", "<SPLIT>"),
+                            @"<SPLIT>|(?<=[\.\?!。！？؟｡٫۔…⁇⁈⁉\u061F\u06D4\u0964\u0965])"
+                        );
 
                         foreach (var sentence in sentences)
                         {
-                            string cleanedSentence = sentence.Trim();
+                            string cleanedSentence = processor.RemoveConsequtiveSpaces(
+                                Regex.Replace(sentence.Replace("\n", " ").Replace("\r", " "), @"[\p{P}\p{S}]", "").Trim());
+
                             if (string.IsNullOrWhiteSpace(cleanedSentence))
                                 continue;
 
-                            var sentenceWords = processor.Words(cleanedSentence, ignoreCode: true)
-                                                         .Select(x => NgrammProcessor.ignore_case ? x.Value.ToLower() : x.Value)
-                                                         .ToHashSet();
+                            bool foundAsSequence = false;
 
-                            if (inputWords.All(w => sentenceWords.Contains(w)))
+                            if (isUnicodeWholePhrase)
                             {
-                                if (!result.ContainsKey(cleanedSentence))
-                                    result[cleanedSentence] = 0;
-                                result[cleanedSentence]++;
+                                string sentenceNormalized = NgrammProcessor.ignore_case
+                                    ? cleanedSentence.ToLower()
+                                    : cleanedSentence;
+
+                                if (sentenceNormalized.Contains(inputWords[0]))
+                                    foundAsSequence = true;
+                            }
+                            else
+                            {
+                                var sentenceWords = processor.Words(cleanedSentence, ignoreCode: true)
+                                                             .Select(x => NgrammProcessor.ignore_case ? x.Value.ToLower() : x.Value)
+                                                             .ToArray();
+
+                                for (int i = 0; i <= sentenceWords.Length - inputWords.Length; i++)
+                                {
+                                    var segment = sentenceWords.Skip(i).Take(inputWords.Length);
+                                    if (string.Join(" ", segment) == string.Join(" ", inputWords))
+                                    {
+                                        foundAsSequence = true;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (foundAsSequence)
+                            {
+                                string normalized = NgrammProcessor.ignore_case
+                                    ? cleanedSentence.ToLower()
+                                    : cleanedSentence;
+
+                                if (result.ContainsKey(normalized))
+                                    result[normalized]++;
+                                else
+                                    result[normalized] = 1;
                             }
                         }
 
@@ -471,16 +636,34 @@ namespace NGramm
                     }
 
 
-
-
             }
 
-            var sorted = result.OrderByDescending(r => r.Value).ToList();
+            var sorted = result.Where(r => r.Value >= frequencyThreshold) // фільтрація за порогом
+                               .OrderByDescending(r => r.Value).ToList();
+
             int rank = 1;
             foreach (var kv in sorted)
             {
+                string displayKey = kv.Key;
+
+                if (NgrammProcessor.ignore_case)
+                {
+                    displayKey = displayKey.ToLower();
+                }
+                else
+                {
+                    // Знайди точний збіг у сирому тексті — без змін
+                    string pattern = $@"\b{Regex.Escape(kv.Key)}\b";
+                    var match = Regex.Match(processor.rawTextorg, pattern);
+
+                    if (match.Success)
+                    {
+                        displayKey = match.Value; // ← 100% справжній casing
+                    }
+                }
+
                 var item = new ListViewItem(rank.ToString());
-                item.SubItems.Add(kv.Key);
+                item.SubItems.Add(displayKey);
                 item.SubItems.Add(kv.Value.ToString());
                 resultsListView.Items.Add(item);
                 rank++;
@@ -489,7 +672,7 @@ namespace NGramm
             MessageBox.Show("Пошук завершено", "Успіх", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
-        
+
 
 
         private void SaveButton_Click(object sender, EventArgs e)
@@ -513,7 +696,17 @@ namespace NGramm
 
         private void ResultsListView_ColumnClick(object sender, ColumnClickEventArgs e)
         {
-            resultsListView.ListViewItemSorter = new CollocationListViewSorter(e.Column);
+
+            if (e.Column == lastSortedColumn)
+                sortAscending = !sortAscending;
+            else
+            {
+                lastSortedColumn = e.Column;
+                sortAscending = true;
+            }
+
+            resultsListView.ListViewItemSorter = new CollocationListViewSorter(e.Column, sortAscending);
+            resultsListView.Sort();
         }
         private void ResultsListView_MouseClick(object sender, MouseEventArgs e)
         {
